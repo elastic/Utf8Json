@@ -64,11 +64,18 @@ namespace Utf8Json
         public static byte[] Serialize<T>(T value, IJsonFormatterResolver resolver)
         {
             if (resolver == null) resolver = DefaultResolver;
-
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            var formatter = resolver.GetFormatterWithVerify<T>();
-            formatter.Serialize(ref writer, value, resolver);
-            return writer.ToUtf8ByteArray();
+			var buffer = MemoryPool.Rent();
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				var formatter = resolver.GetFormatterWithVerify<T>();
+				formatter.Serialize(ref writer, value, resolver);
+				return writer.ToUtf8ByteArray();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         public static void Serialize<T>(ref JsonWriter writer, T value)
@@ -152,10 +159,19 @@ namespace Utf8Json
         {
             if (resolver == null) resolver = DefaultResolver;
 
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            var formatter = resolver.GetFormatterWithVerify<T>();
-            formatter.Serialize(ref writer, value, resolver);
-            return writer.GetBuffer();
+			var buffer = MemoryPool.Rent();
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				var formatter = resolver.GetFormatterWithVerify<T>();
+				formatter.Serialize(ref writer, value, resolver);
+				var arraySegment = writer.GetBuffer();
+				return new ArraySegment<byte>(BinaryUtil.ToArray(arraySegment));
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         /// <summary>
@@ -173,10 +189,18 @@ namespace Utf8Json
         {
             if (resolver == null) resolver = DefaultResolver;
 
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            var formatter = resolver.GetFormatterWithVerify<T>();
-            formatter.Serialize(ref writer, value, resolver);
-            return writer.ToString();
+			var buffer = MemoryPool.Rent();
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				var formatter = resolver.GetFormatterWithVerify<T>();
+				formatter.Serialize(ref writer, value, resolver);
+				return writer.ToString();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         public static T Deserialize<T>(string json)
@@ -256,17 +280,24 @@ namespace Utf8Json
             }
 #endif
             {
-                var buf = MemoryPool.GetBuffer();
-                var len = FillFromStream(stream, ref buf);
+				var buf = MemoryPool.Rent();
+				try
+				{
+					var len = FillFromStream(stream, ref buf);
 
-                // when token is number, can not use from pool(can not find end line).
-                var token = new JsonReader(buf).GetCurrentJsonToken();
-                if (token == JsonToken.Number)
-                {
-                    buf = BinaryUtil.FastCloneWithResize(buf, len);
-                }
+					// when token is number, can not use from pool(can not find end line).
+					var token = new JsonReader(buf).GetCurrentJsonToken();
+					if (token == JsonToken.Number)
+					{
+						buf = BinaryUtil.FastCloneWithResize(buf, len);
+					}
 
-                return Deserialize<T>(buf, resolver);
+					return Deserialize<T>(buf, resolver);
+				}
+				finally
+				{
+					MemoryPool.Return(buf);
+				}
             }
         }
 
@@ -321,17 +352,34 @@ namespace Utf8Json
         public static string PrettyPrint(byte[] json, int offset)
         {
             var reader = new JsonReader(json, offset);
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            WritePrittyPrint(ref reader, ref writer, 0);
-            return writer.ToString();
+			var buffer = MemoryPool.Rent();
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				WritePrittyPrint(ref reader, ref writer, 0);
+				return writer.ToString();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         public static string PrettyPrint(string json)
         {
             var reader = new JsonReader(Encoding.UTF8.GetBytes(json));
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            WritePrittyPrint(ref reader, ref writer, 0);
-            return writer.ToString();
+			var buffer = MemoryPool.Rent();
+
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				WritePrittyPrint(ref reader, ref writer, 0);
+				return writer.ToString();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         public static byte[] PrettyPrintByteArray(byte[] json)
@@ -342,17 +390,34 @@ namespace Utf8Json
         public static byte[] PrettyPrintByteArray(byte[] json, int offset)
         {
             var reader = new JsonReader(json, offset);
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            WritePrittyPrint(ref reader, ref writer, 0);
-            return writer.ToUtf8ByteArray();
+			var buffer = MemoryPool.Rent();
+
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				WritePrittyPrint(ref reader, ref writer, 0);
+				return writer.ToUtf8ByteArray();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         public static byte[] PrettyPrintByteArray(string json)
         {
             var reader = new JsonReader(Encoding.UTF8.GetBytes(json));
-            var writer = new JsonWriter(MemoryPool.GetBuffer());
-            WritePrittyPrint(ref reader, ref writer, 0);
-            return writer.ToUtf8ByteArray();
+			var buffer = MemoryPool.Rent();
+			try
+			{
+				var writer = new JsonWriter(buffer);
+				WritePrittyPrint(ref reader, ref writer, 0);
+				return writer.ToUtf8ByteArray();
+			}
+			finally
+			{
+				MemoryPool.Return(buffer);
+			}
         }
 
         static readonly byte[][] indent = Enumerable.Range(0, 100).Select(x => Encoding.UTF8.GetBytes(new string(' ', x * 2))).ToArray();
@@ -451,19 +516,17 @@ namespace Utf8Json
             return length;
         }
 
-        static class MemoryPool
-        {
-            [ThreadStatic]
-            static byte[] buffer = null;
+		static class MemoryPool
+		{
+			public static byte[] Rent(int minLength = 65535)
+			{
+				return System.Buffers.ArrayPool<byte>.Shared.Rent(minLength);
+			}
 
-            public static byte[] GetBuffer()
-            {
-                if (buffer == null)
-                {
-                    buffer = new byte[65536];
-                }
-                return buffer;
-            }
-        }
+			public static void Return(byte[] bytes)
+			{
+				System.Buffers.ArrayPool<byte>.Shared.Return(bytes);
+			}
+		}
     }
 }
