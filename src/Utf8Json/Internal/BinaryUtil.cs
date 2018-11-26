@@ -111,5 +111,31 @@ namespace Utf8Json.Internal
 
             return dst;
         }
+
+#if NETSTANDARD
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+		public static
+#if NETSTANDARD
+			unsafe
+#endif
+			byte[] ToArray(ArraySegment<byte> src)
+		{
+			if (src == null) throw new ArgumentNullException("src");
+
+			byte[] dst = new byte[src.Count];
+
+#if NETSTANDARD && !NET45
+			fixed (byte* pSrc = &src.Array[src.Offset])
+			fixed (byte* pDst = &dst[0])
+			{
+				Buffer.MemoryCopy(pSrc, pDst, dst.Length, src.Count);
+			}
+#else
+            Buffer.BlockCopy(src.Array, src.Offset, dst, 0, src.Count);
+#endif
+
+			return dst;
+		}
     }
 }
