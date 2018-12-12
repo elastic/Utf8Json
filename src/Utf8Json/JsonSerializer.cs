@@ -516,7 +516,7 @@ namespace Utf8Json
             return length;
         }
 
-		static class MemoryPool
+		internal static class MemoryPool
 		{
 			public static byte[] Rent(int minLength = 65535)
 			{

@@ -70,14 +70,14 @@ namespace Utf8Json.Internal
 
             byte[] array2 = array;
             if (array2 == null)
-            {
-                array = new byte[newSize];
+			{
+				array = JsonSerializer.MemoryPool.Rent(newSize);
                 return;
             }
 
             if (array2.Length != newSize)
             {
-                byte[] array3 = new byte[newSize];
+                byte[] array3 = JsonSerializer.MemoryPool.Rent(newSize);
                 Buffer.BlockCopy(array2, 0, array3, 0, (array2.Length > newSize) ? newSize : array2.Length);
                 array = array3;
             }
