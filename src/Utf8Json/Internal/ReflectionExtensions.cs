@@ -47,6 +47,13 @@ namespace Utf8Json.Internal
                     yield return item;
                 }
             }
+			foreach (var @interface in type.GetInterfaces())
+			{
+				foreach (var item in GetAllPropertiesCore(@interface, nameCheck))
+				{
+					yield return item;
+				}
+			}
         }
 
         public static IEnumerable<FieldInfo> GetAllFields(this Type type)
