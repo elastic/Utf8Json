@@ -17,6 +17,21 @@ namespace Utf8Json.Internal.Emit
         public MetaMember[] ConstructorParameters { get; internal set; }
         public MetaMember[] Members { get; internal set; }
 
+		private static TAttribute GetCustomAttribute<TAttribute>(PropertyInfo propertyInfo, bool inherit, ILookup<string, PropertyInfo> lookup)
+			where TAttribute : Attribute
+		{
+			var attribute = propertyInfo.GetCustomAttribute<TAttribute>(inherit);
+			if (attribute != null)
+				return attribute;
+
+			if (lookup == null)
+				return null;
+
+			// TODO: May be more than one interface with the same property name. Could use InterfaceMap for complete accuracy
+			var interfaceProperty = lookup[propertyInfo.Name].FirstOrDefault(p => p.PropertyType == propertyInfo.PropertyType);
+			return interfaceProperty != null ? interfaceProperty.GetCustomAttribute<TAttribute>(inherit) : null;
+		}
+
         public MetaType(Type type, Func<string, string> nameMutetor, bool allowPrivate)
         {
             var ti = type.GetTypeInfo();
@@ -27,14 +42,18 @@ namespace Utf8Json.Internal.Emit
             this.Type = type;
 
             var stringMembers = new Dictionary<string, MetaMember>();
+			{
+				var interfaceProperties = ti.IsClass
+					? type.GetInterfaces().SelectMany(i => i.GetAllProperties()).ToLookup(p => p.Name)
+					: null;
 
-            {
                 foreach (var item in type.GetAllProperties())
                 {
                     if (item.GetIndexParameters().Length > 0) continue; // skip indexer
-                    if (item.GetCustomAttribute<IgnoreDataMemberAttribute>(true) != null) continue;
 
-                    var dm = item.GetCustomAttribute<DataMemberAttribute>(true);
+                    if (GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProperties) != null) continue;
+                    var dm = GetCustomAttribute<DataMemberAttribute>(item, true, interfaceProperties);
+
 					if (dataContractPresent && dm == null) continue;
                     var name = (dm != null && dm.Name != null) ? dm.Name : nameMutetor(item.Name);
 
