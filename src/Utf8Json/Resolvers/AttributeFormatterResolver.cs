@@ -42,8 +42,13 @@ namespace Utf8Json.Resolvers
                 try
                 {
                     if (attr.FormatterType.IsGenericType && !attr.FormatterType.GetTypeInfo().IsConstructedGenericType())
-                    {
-                        var t = attr.FormatterType.MakeGenericType(typeof(T)); // use T self
+					{
+						// generic types need to be deconstructed
+						var types = typeof(T).IsGenericType
+							? typeof(T).GenericTypeArguments
+							: new[] { typeof(T) };
+
+                        var t = attr.FormatterType.MakeGenericType(types);
                         formatter = (IJsonFormatter<T>)Activator.CreateInstance(t, attr.Arguments);
                     }
                     else
