@@ -1344,16 +1344,36 @@ namespace Utf8Json.Resolvers.Internal
                 foreach (var item in members.Where(x => x.MemberInfo != null && x.MemberInfo.IsWritable))
                 {
                     if (isSideEffectFreeType)
-                    {
+					{
+						var next = il.DefineLabel();
+
+						// don't assign the value if it's null
+						var infoType = item.MemberInfo.Type;
+						if (infoType.IsClass || infoType.IsInterface || infoType.IsAbstract)
+						{
+							il.EmitLdloc(item.LocalField);
+							il.Emit(OpCodes.Brfalse, next);
+						}
+
                         il.Emit(OpCodes.Dup);
                         il.EmitLdloc(item.LocalField);
                         item.MemberInfo.EmitStoreValue(il);
+
+						il.MarkLabel(next);
                     }
                     else
                     {
                         var next = il.DefineLabel();
                         il.EmitLdloc(item.IsDeserializedField);
                         il.Emit(OpCodes.Brfalse, next);
+
+						// don't assign the value if it's null
+						var infoType = item.MemberInfo.Type;
+						if (infoType.IsClass || infoType.IsInterface || infoType.IsAbstract)
+						{
+							il.EmitLdloc(item.LocalField);
+							il.Emit(OpCodes.Brfalse, next);
+						}
 
                         il.EmitLdloc(result);
                         il.EmitLdloc(item.LocalField);
@@ -1387,16 +1407,36 @@ namespace Utf8Json.Resolvers.Internal
                 foreach (var item in members.Where(x => x.MemberInfo != null && x.MemberInfo.IsWritable))
                 {
                     if (isSideEffectFreeType)
-                    {
+					{
+						var next = il.DefineLabel();
+
+						// don't assign the value if it's null
+						var infoType = item.MemberInfo.Type;
+						if (infoType.IsClass || infoType.IsInterface || infoType.IsAbstract)
+						{
+							il.EmitLdloc(item.LocalField);
+							il.Emit(OpCodes.Brfalse, next);
+						}
+
                         il.EmitLdloca(result);
                         il.EmitLdloc(item.LocalField);
                         item.MemberInfo.EmitStoreValue(il);
+
+						il.MarkLabel(next);
                     }
                     else
                     {
                         var next = il.DefineLabel();
                         il.EmitLdloc(item.IsDeserializedField);
                         il.Emit(OpCodes.Brfalse, next);
+
+						// don't assign the value if it's null
+						var infoType = item.MemberInfo.Type;
+						if (infoType.IsClass || infoType.IsInterface || infoType.IsAbstract)
+						{
+							il.EmitLdloc(item.LocalField);
+							il.Emit(OpCodes.Brfalse, next);
+						}
 
                         il.EmitLdloca(result);
                         il.EmitLdloc(item.LocalField);
