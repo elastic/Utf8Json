@@ -18,6 +18,7 @@ namespace Utf8Json.Internal.Emit
         public bool IsWritable { get; private set; }
         public bool IsReadable { get; private set; }
         public Type Type { get; private set; }
+        public Type DeclaringType { get; private set; }
         public FieldInfo FieldInfo { get; private set; }
         public PropertyInfo PropertyInfo { get; private set; }
         public MethodInfo ShouldSerializeMethodInfo { get; private set; }
@@ -40,6 +41,7 @@ namespace Utf8Json.Internal.Emit
             this.MemberName = info.Name;
             this.FieldInfo = info;
             this.Type = info.FieldType;
+			this.DeclaringType = info.DeclaringType;
             this.IsReadable = allowPrivate || info.IsPublic;
             this.IsWritable = allowPrivate || (info.IsPublic && !info.IsInitOnly);
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);
@@ -54,6 +56,7 @@ namespace Utf8Json.Internal.Emit
             this.MemberName = info.Name;
             this.PropertyInfo = info;
             this.Type = info.PropertyType;
+			this.DeclaringType = info.DeclaringType;
             this.IsReadable = (getMethod != null) && (allowPrivate || getMethod.IsPublic) && !getMethod.IsStatic;
             this.IsWritable = (setMethod != null) && (allowPrivate || setMethod.IsPublic) && !setMethod.IsStatic;
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);

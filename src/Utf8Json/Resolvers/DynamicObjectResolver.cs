@@ -840,7 +840,7 @@ namespace Utf8Json.Resolvers.Internal
 
                     var attrVar = il.DeclareLocal(typeof(JsonFormatterAttribute));
 
-                    il.Emit(OpCodes.Ldtoken, info.Type);
+                    il.Emit(OpCodes.Ldtoken, item.DeclaringType);
                     il.EmitCall(EmitInfo.GetTypeFromHandle);
                     il.Emit(OpCodes.Ldstr, item.MemberName);
                     il.EmitLdc_I4(bindingFlags);
