@@ -119,7 +119,7 @@ namespace Utf8Json.Internal
 #if NETSTANDARD
 			unsafe
 #endif
-			byte[] ToArray(ArraySegment<byte> src)
+			byte[] ToArray(ref ArraySegment<byte> src)
 		{
 			if (src == null) throw new ArgumentNullException("src");
 

@@ -166,7 +166,7 @@ namespace Utf8Json
 				var formatter = resolver.GetFormatterWithVerify<T>();
 				formatter.Serialize(ref writer, value, resolver);
 				var arraySegment = writer.GetBuffer();
-				return new ArraySegment<byte>(BinaryUtil.ToArray(arraySegment));
+				return new ArraySegment<byte>(BinaryUtil.ToArray(ref arraySegment));
 			}
 			finally
 			{
