@@ -125,6 +125,9 @@ namespace Utf8Json.Internal
 
 			byte[] dst = new byte[src.Count];
 
+			if (src.Count == 0)
+				return dst;
+
 #if NETSTANDARD && !NET45
 			fixed (byte* pSrc = &src.Array[src.Offset])
 			fixed (byte* pDst = &dst[0])
