@@ -281,6 +281,7 @@ namespace Utf8Json
 #endif
             {
 				var buf = MemoryPool.Rent();
+				var poolBuf = buf;
 				try
 				{
 					var len = FillFromStream(stream, ref buf);
@@ -296,7 +297,7 @@ namespace Utf8Json
 				}
 				finally
 				{
-					MemoryPool.Return(buf);
+					MemoryPool.Return(poolBuf);
 				}
             }
         }
