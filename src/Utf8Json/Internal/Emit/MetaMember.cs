@@ -18,9 +18,9 @@ namespace Utf8Json.Internal.Emit
         public bool IsWritable { get; private set; }
         public bool IsReadable { get; private set; }
         public Type Type { get; private set; }
-        public Type DeclaringType { get; private set; }
         public FieldInfo FieldInfo { get; private set; }
         public PropertyInfo PropertyInfo { get; private set; }
+        public PropertyInfo[] InterfacePropertyInfos { get; private set; }
         public MethodInfo ShouldSerializeMethodInfo { get; private set; }
 
         MethodInfo getMethod;
@@ -41,13 +41,12 @@ namespace Utf8Json.Internal.Emit
             this.MemberName = info.Name;
             this.FieldInfo = info;
             this.Type = info.FieldType;
-			this.DeclaringType = info.DeclaringType;
             this.IsReadable = allowPrivate || info.IsPublic;
             this.IsWritable = allowPrivate || (info.IsPublic && !info.IsInitOnly);
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);
         }
 
-        public MetaMember(PropertyInfo info, string name, bool allowPrivate)
+        public MetaMember(PropertyInfo info, string name, PropertyInfo[] interfaceInfos, bool allowPrivate)
         {
             this.getMethod = info.GetGetMethod(true);
             this.setMethod = info.GetSetMethod(true);
@@ -55,8 +54,8 @@ namespace Utf8Json.Internal.Emit
             this.Name = name;
             this.MemberName = info.Name;
             this.PropertyInfo = info;
+			this.InterfacePropertyInfos = interfaceInfos;
             this.Type = info.PropertyType;
-			this.DeclaringType = info.DeclaringType;
             this.IsReadable = (getMethod != null) && (allowPrivate || getMethod.IsPublic) && !getMethod.IsStatic;
             this.IsWritable = (setMethod != null) && (allowPrivate || setMethod.IsPublic) && !setMethod.IsStatic;
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);
@@ -67,21 +66,52 @@ namespace Utf8Json.Internal.Emit
             var shouldSerialize = "ShouldSerialize" + info.Name;
 
             // public only
-            return info.DeclaringType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                .Where(x => x.Name == shouldSerialize && x.ReturnType == typeof(bool) && x.GetParameters().Length == 0)
-                .FirstOrDefault();
+            return info.DeclaringType
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .FirstOrDefault(x => x.Name == shouldSerialize && x.ReturnType == typeof(bool) && x.GetParameters().Length == 0);
         }
 
-        public T GetCustomAttribute<T>(bool inherit) where T : Attribute
+		public class AttributeDeclaringType<T> where T : Attribute
+		{
+			public AttributeDeclaringType(T attribute, Type declaringType)
+			{
+				Attribute = attribute;
+				DeclaringType = declaringType;
+			}
+
+			public T Attribute { get; private set; }
+			public Type DeclaringType { get; private set; }
+		}
+
+        public AttributeDeclaringType<T> GetCustomAttribute<T>(bool inherit) where T : Attribute
         {
             if (IsProperty)
             {
-                return PropertyInfo.GetCustomAttribute<T>(inherit);
-            }
+                var attribute = PropertyInfo.GetCustomAttribute<T>(inherit);
+				if (attribute != null)
+					return new AttributeDeclaringType<T>(attribute, PropertyInfo.DeclaringType);
+
+				if (InterfacePropertyInfos == null)
+					return null;
+
+				// check interface properties for respective attribute.
+				foreach (var info in InterfacePropertyInfos)
+				{
+					attribute = info.GetCustomAttribute<T>(inherit);
+					if (attribute != null)
+						return new AttributeDeclaringType<T>(attribute, info.DeclaringType);
+				}
+
+				return null;
+			}
             else if (FieldInfo != null)
             {
-                return FieldInfo.GetCustomAttribute<T>(inherit);
-            }
+                var attribute = FieldInfo.GetCustomAttribute<T>(inherit);
+                if (attribute != null)
+					return new AttributeDeclaringType<T>(attribute, FieldInfo.DeclaringType);
+
+				return null;
+			}
             else
             {
                 return null;

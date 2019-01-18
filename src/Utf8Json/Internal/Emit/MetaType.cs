@@ -6,6 +6,11 @@ using System.Runtime.Serialization;
 
 namespace Utf8Json.Internal.Emit
 {
+	internal class MetaInterfaces
+	{
+
+	}
+
     internal class MetaType
     {
         public Type Type { get; private set; }
@@ -17,18 +22,17 @@ namespace Utf8Json.Internal.Emit
         public MetaMember[] ConstructorParameters { get; internal set; }
         public MetaMember[] Members { get; internal set; }
 
-		private static TAttribute GetCustomAttribute<TAttribute>(PropertyInfo propertyInfo, bool inherit, ILookup<string, PropertyInfo> lookup)
+		private static TAttribute GetCustomAttribute<TAttribute>(PropertyInfo propertyInfo, bool inherit, List<PropertyInfo> interfaceProperties)
 			where TAttribute : Attribute
 		{
 			var attribute = propertyInfo.GetCustomAttribute<TAttribute>(inherit);
 			if (attribute != null)
 				return attribute;
 
-			if (lookup == null)
+			if (interfaceProperties == null || interfaceProperties.Count == 0)
 				return null;
 
-			// TODO: May be more than one interface with the same property name. Could use InterfaceMap for complete accuracy
-			var interfaceProperty = lookup[propertyInfo.Name].FirstOrDefault(p => p.PropertyType == propertyInfo.PropertyType);
+			var interfaceProperty = interfaceProperties.FirstOrDefault();
 			return interfaceProperty != null ? interfaceProperty.GetCustomAttribute<TAttribute>(inherit) : null;
 		}
 
@@ -43,21 +47,43 @@ namespace Utf8Json.Internal.Emit
 
             var stringMembers = new Dictionary<string, MetaMember>();
 			{
-				var interfaceProperties = ti.IsClass
-					? type.GetInterfaces().SelectMany(i => i.GetAllProperties()).ToLookup(p => p.Name)
+				var interfaceMaps = ti.IsClass
+					? type.GetInterfaces().Select(type.GetInterfaceMap).ToArray()
 					: null;
 
                 foreach (var item in type.GetAllProperties())
                 {
                     if (item.GetIndexParameters().Length > 0) continue; // skip indexer
 
-                    if (GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProperties) != null) continue;
-                    var dm = GetCustomAttribute<DataMemberAttribute>(item, true, interfaceProperties);
+					List<PropertyInfo> interfaceProps = null;
+					if (interfaceMaps != null)
+					{
+						var accessor = item.GetGetMethod(allowPrivate) ?? item.GetSetMethod(allowPrivate);
+
+						for (var i = 0; i < interfaceMaps.Length; i++)
+						{
+							var interfaceMap = interfaceMaps[i];
+							if (interfaceMap.TargetMethods.Contains(accessor))
+							{
+								if (interfaceProps == null)
+									interfaceProps = new List<PropertyInfo>();
+
+								var info = interfaceMap.InterfaceType.GetProperty(item.Name);
+								if (info != null)
+									interfaceProps.Add(info);
+							}
+						}
+					}
+
+					if (GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProps) != null) continue;
+                    var dm = GetCustomAttribute<DataMemberAttribute>(item, true, interfaceProps);
 
 					if (dataContractPresent && dm == null) continue;
                     var name = (dm != null && dm.Name != null) ? dm.Name : nameMutetor(item.Name);
 
-                    var member = new MetaMember(item, name, allowPrivate);
+					var props = interfaceProps != null ? interfaceProps.ToArray() : null;
+
+                    var member = new MetaMember(item, name, props, allowPrivate);
                     if (!member.IsReadable && !member.IsWritable) continue;
 
                     if (stringMembers.ContainsKey(member.Name))
