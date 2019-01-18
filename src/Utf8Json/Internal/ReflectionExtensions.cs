@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -25,6 +27,21 @@ namespace Utf8Json.Internal
                 && (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
                 && (type.Attributes & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
         }
+
+        private static readonly ThreadsafeTypeKeyHashTable<MethodInfo> ShouldSerializeMethodInfo =
+			new ThreadsafeTypeKeyHashTable<MethodInfo>();
+
+		public static MethodInfo GetShouldSerializeMethod(this System.Reflection.TypeInfo type)
+		{
+			return ShouldSerializeMethodInfo.GetOrAdd(type, t =>
+			{
+				return t.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+					.FirstOrDefault(m => m.Name == "ShouldSerialize"
+						&& m.ReturnType == typeof(bool)
+						&& m.GetParameters().Length == 1
+						&& m.GetParameters()[0].ParameterType == typeof(IJsonFormatterResolver));
+			});
+		}
 
         public static IEnumerable<PropertyInfo> GetAllProperties(this Type type)
         {

@@ -22,6 +22,7 @@ namespace Utf8Json.Internal.Emit
         public PropertyInfo PropertyInfo { get; private set; }
         public PropertyInfo[] InterfacePropertyInfos { get; private set; }
         public MethodInfo ShouldSerializeMethodInfo { get; private set; }
+        public MethodInfo ShouldSerializeTypeMethodInfo { get; private set; }
 
         MethodInfo getMethod;
         MethodInfo setMethod;
@@ -44,7 +45,8 @@ namespace Utf8Json.Internal.Emit
             this.IsReadable = allowPrivate || info.IsPublic;
             this.IsWritable = allowPrivate || (info.IsPublic && !info.IsInitOnly);
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);
-        }
+			this.ShouldSerializeTypeMethodInfo = info.FieldType.GetTypeInfo().GetShouldSerializeMethod();
+		}
 
         public MetaMember(PropertyInfo info, string name, PropertyInfo[] interfaceInfos, bool allowPrivate)
         {
@@ -59,6 +61,7 @@ namespace Utf8Json.Internal.Emit
             this.IsReadable = (getMethod != null) && (allowPrivate || getMethod.IsPublic) && !getMethod.IsStatic;
             this.IsWritable = (setMethod != null) && (allowPrivate || setMethod.IsPublic) && !setMethod.IsStatic;
             this.ShouldSerializeMethodInfo = GetShouldSerialize(info);
+			this.ShouldSerializeTypeMethodInfo = info.PropertyType.GetTypeInfo().GetShouldSerializeMethod();
         }
 
         static MethodInfo GetShouldSerialize(MemberInfo info)

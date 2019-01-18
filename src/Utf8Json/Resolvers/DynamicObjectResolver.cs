@@ -8,6 +8,7 @@ using Utf8Json.Formatters;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using Utf8Json.Resolvers.Internal;
 
 namespace Utf8Json.Resolvers
@@ -1005,6 +1006,15 @@ namespace Utf8Json.Resolvers.Internal
                         il.EmitCall(item.ShouldSerializeMethodInfo);
                         il.Emit(OpCodes.Brfalse_S, (index < labels.Length - 1) ? labels[index + 1] : endObjectLabel); // false, next label
                     }
+
+					if (item.ShouldSerializeTypeMethodInfo != null)
+					{
+						argValue.EmitLoad();
+						item.EmitLoadValue(il);
+						argResolver.EmitLoad();
+						il.EmitCall(item.ShouldSerializeTypeMethodInfo);
+						il.Emit(OpCodes.Brfalse_S, (index < labels.Length - 1) ? labels[index + 1] : endObjectLabel); // false, next label
+					}
 
                     // if(wrote)
                     var toWrite = il.DefineLabel();
