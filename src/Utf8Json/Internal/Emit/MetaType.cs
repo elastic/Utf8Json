@@ -36,6 +36,16 @@ namespace Utf8Json.Internal.Emit
 			return interfaceProperty != null ? interfaceProperty.GetCustomAttribute<TAttribute>(inherit) : null;
 		}
 
+		private static object[] GetCustomAttributes(PropertyInfo propertyInfo, bool inherit, List<PropertyInfo> interfaceProperties)
+		{
+			var attributes = propertyInfo.GetCustomAttributes(inherit);
+
+			if (interfaceProperties == null || interfaceProperties.Count == 0)
+				return attributes;
+
+			return attributes.Concat(interfaceProperties.SelectMany(p => p.GetCustomAttributes(inherit))).ToArray();
+		}
+
         public MetaType(Type type, Func<string, string> nameMutetor, bool allowPrivate)
         {
             var ti = type.GetTypeInfo();
@@ -55,6 +65,7 @@ namespace Utf8Json.Internal.Emit
                 {
                     if (item.GetIndexParameters().Length > 0) continue; // skip indexer
 
+                    // get interface properties this property implements
 					List<PropertyInfo> interfaceProps = null;
 					if (interfaceMaps != null)
 					{
@@ -75,11 +86,28 @@ namespace Utf8Json.Internal.Emit
 						}
 					}
 
-					if (GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProps) != null) continue;
+					var jsonPropertyAttributes = GetCustomAttributes(item, true, interfaceProps)
+						.OfType<IJsonProperty>().OrderBy(o => o.Order).ToArray();
+
+					if (jsonPropertyAttributes.Any(p => p.Ignore)
+						|| GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProps) != null)
+						continue;
+
+
                     var dm = GetCustomAttribute<DataMemberAttribute>(item, true, interfaceProps);
 
-					if (dataContractPresent && dm == null) continue;
-                    var name = (dm != null && dm.Name != null) ? dm.Name : nameMutetor(item.Name);
+					if (dataContractPresent && dm == null && !jsonPropertyAttributes.Any())
+						continue;
+
+					var jsonProperty = jsonPropertyAttributes.FirstOrDefault(p => !string.IsNullOrEmpty(p.Name));
+
+					string name = null;
+					if (jsonProperty != null)
+						name = jsonProperty.Name;
+					else if (dm != null && dm.Name != null)
+						name = dm.Name;
+					else
+						name = nameMutetor(item.Name);
 
 					var props = interfaceProps != null ? interfaceProps.ToArray() : null;
 
