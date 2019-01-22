@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 
 namespace Utf8Json.Internal.Emit
 {
-    internal class DynamicAssembly
+    public class DynamicAssembly
     {
 #if NET45 || NET47
         readonly string moduleName;

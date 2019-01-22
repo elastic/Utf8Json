@@ -1,3 +1,7 @@
+using System;
+using System.Globalization;
+using System.Reflection;
+
 namespace Utf8Json
 {
 	public interface IJsonProperty
@@ -7,5 +11,22 @@ namespace Utf8Json
 		int Order { get; }
 
 		bool Ignore { get; set; }
+	}
+
+	public class JsonProperty : IJsonProperty
+	{
+		public JsonProperty(string name)
+		{
+			Name = name;
+		}
+
+		public string Name { get; set; }
+
+		public int Order
+		{
+			get { return 0; }
+		}
+
+		public bool Ignore { get; set; }
 	}
 }

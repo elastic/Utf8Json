@@ -36,17 +36,7 @@ namespace Utf8Json.Internal.Emit
 			return interfaceProperty != null ? interfaceProperty.GetCustomAttribute<TAttribute>(inherit) : null;
 		}
 
-		private static object[] GetCustomAttributes(PropertyInfo propertyInfo, bool inherit, List<PropertyInfo> interfaceProperties)
-		{
-			var attributes = propertyInfo.GetCustomAttributes(inherit);
-
-			if (interfaceProperties == null || interfaceProperties.Count == 0)
-				return attributes;
-
-			return attributes.Concat(interfaceProperties.SelectMany(p => p.GetCustomAttributes(inherit))).ToArray();
-		}
-
-        public MetaType(Type type, Func<string, string> nameMutetor, bool allowPrivate)
+        public MetaType(Type type, Func<string, string> nameMutator, Func<MemberInfo, IJsonProperty> propertyMapper, bool allowPrivate)
         {
             var ti = type.GetTypeInfo();
             var isClass = ti.IsClass || ti.IsInterface || ti.IsAbstract;
@@ -86,28 +76,30 @@ namespace Utf8Json.Internal.Emit
 						}
 					}
 
-					var jsonPropertyAttributes = GetCustomAttributes(item, true, interfaceProps)
-						.OfType<IJsonProperty>().OrderBy(o => o.Order).ToArray();
-
-					if (jsonPropertyAttributes.Any(p => p.Ignore)
-						|| GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProps) != null)
+					if (GetCustomAttribute<IgnoreDataMemberAttribute>(item, true, interfaceProps) != null)
 						continue;
-
 
                     var dm = GetCustomAttribute<DataMemberAttribute>(item, true, interfaceProps);
 
-					if (dataContractPresent && dm == null && !jsonPropertyAttributes.Any())
+					if (dataContractPresent && dm == null)
 						continue;
 
-					var jsonProperty = jsonPropertyAttributes.FirstOrDefault(p => !string.IsNullOrEmpty(p.Name));
+					var name = (dm != null && dm.Name != null)
+						? dm.Name
+						: nameMutator(item.Name);
 
-					string name = null;
-					if (jsonProperty != null)
-						name = jsonProperty.Name;
-					else if (dm != null && dm.Name != null)
-						name = dm.Name;
-					else
-						name = nameMutetor(item.Name);
+					if (propertyMapper != null)
+					{
+						var property = propertyMapper(item);
+						if (property != null)
+						{
+							if (property.Ignore)
+								continue;
+
+							if (!string.IsNullOrEmpty(property.Name))
+								name = property.Name;
+						}
+					}
 
 					var props = interfaceProps != null ? interfaceProps.ToArray() : null;
 
@@ -129,7 +121,20 @@ namespace Utf8Json.Internal.Emit
 
                     var dm = item.GetCustomAttribute<DataMemberAttribute>(true);
 					if (dataContractPresent && dm == null) continue;
-                    var name = (dm != null && dm.Name != null) ? dm.Name : nameMutetor(item.Name);
+                    var name = (dm != null && dm.Name != null) ? dm.Name : nameMutator(item.Name);
+
+					if (propertyMapper != null)
+					{
+						var field = propertyMapper(item);
+						if (field != null)
+						{
+							if (field.Ignore)
+								continue;
+
+							if (!string.IsNullOrEmpty(field.Name))
+								name = field.Name;
+						}
+					}
 
                     var member = new MetaMember(item, name, allowPrivate);
                     if (!member.IsReadable && !member.IsWritable) continue;

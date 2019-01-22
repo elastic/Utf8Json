@@ -31,7 +31,7 @@ namespace Utf8Json.Internal
         private static readonly ThreadsafeTypeKeyHashTable<MethodInfo> ShouldSerializeMethodInfo =
 			new ThreadsafeTypeKeyHashTable<MethodInfo>();
 
-		public static MethodInfo GetShouldSerializeMethod(this System.Reflection.TypeInfo type)
+		public static MethodInfo GetShouldSerializeMethod(this TypeInfo type)
 		{
 			return ShouldSerializeMethodInfo.GetOrAdd(type, t =>
 			{
