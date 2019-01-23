@@ -6,12 +6,22 @@ using System.Runtime.Serialization;
 
 namespace Utf8Json.Internal.Emit
 {
-	internal class MetaInterfaces
+	internal class MetaMethodInfoComparer : IEqualityComparer<MethodInfo>
 	{
+		public static MetaMethodInfoComparer Default = new MetaMethodInfoComparer();
 
+		public bool Equals(MethodInfo x, MethodInfo y)
+		{
+			return x.Name == y.Name && x.DeclaringType == y.DeclaringType;
+		}
+
+		public int GetHashCode(MethodInfo obj)
+		{
+			return obj.GetHashCode();
+		}
 	}
 
-    internal class MetaType
+	internal class MetaType
     {
         public Type Type { get; private set; }
         public bool IsClass { get; private set; }
@@ -64,12 +74,16 @@ namespace Utf8Json.Internal.Emit
 						for (var i = 0; i < interfaceMaps.Length; i++)
 						{
 							var interfaceMap = interfaceMaps[i];
-							if (interfaceMap.TargetMethods.Contains(accessor))
+							if (interfaceMap.TargetMethods.Contains(accessor, MetaMethodInfoComparer.Default))
 							{
 								if (interfaceProps == null)
 									interfaceProps = new List<PropertyInfo>();
 
-								var info = interfaceMap.InterfaceType.GetProperty(item.Name);
+								var propertyName = item.Name.StartsWith(interfaceMap.InterfaceType.FullName + ".")
+									? item.Name.Substring(interfaceMap.InterfaceType.FullName.Length + 1)
+									: item.Name;
+
+								var info = interfaceMap.InterfaceType.GetProperty(propertyName);
 								if (info != null)
 									interfaceProps.Add(info);
 							}
@@ -106,12 +120,9 @@ namespace Utf8Json.Internal.Emit
                     var member = new MetaMember(item, name, props, allowPrivate);
                     if (!member.IsReadable && !member.IsWritable) continue;
 
-                    if (stringMembers.ContainsKey(member.Name))
-                    {
-                        throw new InvalidOperationException("same (custom)name is in type. Type:" + type.Name + " Name:" + member.Name);
-                    }
-                    stringMembers.Add(member.Name, member);
-                }
+                    if (!stringMembers.ContainsKey(member.Name))
+						stringMembers.Add(member.Name, member);
+				}
                 foreach (var item in type.GetAllFields())
                 {
                     if (item.GetCustomAttribute<IgnoreDataMemberAttribute>(true) != null) continue;
@@ -139,12 +150,9 @@ namespace Utf8Json.Internal.Emit
                     var member = new MetaMember(item, name, allowPrivate);
                     if (!member.IsReadable && !member.IsWritable) continue;
 
-                    if (stringMembers.ContainsKey(member.Name))
-                    {
-                        throw new InvalidOperationException("same (custom)name is in type. Type:" + type.Name + " Name:" + member.Name);
-                    }
-                    stringMembers.Add(member.Name, member);
-                }
+                    if (!stringMembers.ContainsKey(member.Name))
+						stringMembers.Add(member.Name, member);
+				}
             }
 
             // GetConstructor
