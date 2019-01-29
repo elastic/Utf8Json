@@ -12,6 +12,9 @@ namespace Utf8Json.Internal.Emit
 
 		public bool Equals(MethodInfo x, MethodInfo y)
 		{
+			if (x == null || y == null)
+				return false;
+
 			return x.Name == y.Name && x.DeclaringType == y.DeclaringType;
 		}
 
