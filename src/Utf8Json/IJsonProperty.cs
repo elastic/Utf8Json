@@ -11,6 +11,8 @@ namespace Utf8Json
 		int Order { get; }
 
 		bool Ignore { get; set; }
+
+		bool? AllowPrivate { get; set; }
 	}
 
 	public class JsonProperty : IJsonProperty
@@ -28,5 +30,7 @@ namespace Utf8Json
 		}
 
 		public bool Ignore { get; set; }
+
+		public bool? AllowPrivate { get; set; }
 	}
 }

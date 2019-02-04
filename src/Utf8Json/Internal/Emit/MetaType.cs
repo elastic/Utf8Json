@@ -72,7 +72,7 @@ namespace Utf8Json.Internal.Emit
 					List<PropertyInfo> interfaceProps = null;
 					if (interfaceMaps != null)
 					{
-						var accessor = item.GetGetMethod(allowPrivate) ?? item.GetSetMethod(allowPrivate);
+						var accessor = item.GetGetMethod(true) ?? item.GetSetMethod(true);
 
 						for (var i = 0; i < interfaceMaps.Length; i++)
 						{
@@ -105,6 +105,8 @@ namespace Utf8Json.Internal.Emit
 						? dm.Name
 						: nameMutator(item.Name);
 
+					var allowPrivateMember = allowPrivate;
+
 					if (propertyMapper != null)
 					{
 						var property = propertyMapper(item);
@@ -115,12 +117,15 @@ namespace Utf8Json.Internal.Emit
 
 							if (!string.IsNullOrEmpty(property.Name))
 								name = property.Name;
+
+							if (property.AllowPrivate.HasValue)
+								allowPrivateMember = property.AllowPrivate.Value;
 						}
 					}
 
 					var props = interfaceProps != null ? interfaceProps.ToArray() : null;
 
-                    var member = new MetaMember(item, name, props, allowPrivate);
+                    var member = new MetaMember(item, name, props, allowPrivateMember || dm != null);
                     if (!member.IsReadable && !member.IsWritable) continue;
 
                     if (!stringMembers.ContainsKey(member.Name))
@@ -136,7 +141,7 @@ namespace Utf8Json.Internal.Emit
                     var dm = item.GetCustomAttribute<DataMemberAttribute>(true);
 					if (dataContractPresent && dm == null) continue;
                     var name = (dm != null && dm.Name != null) ? dm.Name : nameMutator(item.Name);
-
+					var allowPrivateMember = allowPrivate;
 					if (propertyMapper != null)
 					{
 						var field = propertyMapper(item);
@@ -147,10 +152,13 @@ namespace Utf8Json.Internal.Emit
 
 							if (!string.IsNullOrEmpty(field.Name))
 								name = field.Name;
+
+							if (field.AllowPrivate.HasValue)
+								allowPrivateMember = field.AllowPrivate.Value;
 						}
 					}
 
-                    var member = new MetaMember(item, name, allowPrivate);
+                    var member = new MetaMember(item, name, allowPrivateMember || dm != null);
                     if (!member.IsReadable && !member.IsWritable) continue;
 
                     if (!stringMembers.ContainsKey(member.Name))

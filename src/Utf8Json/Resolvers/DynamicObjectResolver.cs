@@ -89,7 +89,7 @@ namespace Utf8Json.Resolvers
 		public IJsonFormatter<T> GetFormatter<T>()
 		{
 			return (IJsonFormatter<T>)_formatters.GetOrAdd(typeof(T), type =>
-				DynamicObjectTypeBuilder.BuildFormatterToDynamicMethod<T>(this, _mutator.Value, _propertyMapper, _excludeNull, true));
+				DynamicObjectTypeBuilder.BuildFormatterToDynamicMethod<T>(this, _mutator.Value, _propertyMapper, _excludeNull, false));
 		}
 	}
 }
