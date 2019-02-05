@@ -1168,20 +1168,26 @@ namespace Utf8Json
 
         public ArraySegment<byte> ReadNumberSegment()
         {
-            SkipWhiteSpace();
-            var initialOffset = offset;
-            for (int i = offset; i < bytes.Length; i++)
-            {
-                if (!NumberConverter.IsNumberRepresentation(bytes[i]))
-                {
-                    offset = i;
-                    goto END;
-                }
-            }
-            offset = bytes.Length;
+			SkipWhiteSpace();
+			var initialOffset = offset;
+			for (int i = offset; i < bytes.Length; i++)
+			{
+				if (!NumberConverter.IsNumberRepresentation(bytes[i]))
+				{
+					if (NumberConverter.IsENotation(bytes[i]) && (i + 1) < bytes.Length && NumberConverter.IsNumberRepresentation(bytes[i + 1]))
+					{
+						i++;
+						continue;
+					}
 
-            END:
-            return new ArraySegment<byte>(bytes, initialOffset, offset - initialOffset);
+					offset = i;
+					goto END;
+				}
+			}
+			offset = bytes.Length;
+
+			END:
+			return new ArraySegment<byte>(bytes, initialOffset, offset - initialOffset);
         }
 
         // return last offset.

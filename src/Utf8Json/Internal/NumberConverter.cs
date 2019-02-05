@@ -14,6 +14,17 @@ namespace Utf8Json.Internal
     /// </summary>
     public static class NumberConverter
     {
+		/// <summary>
+		/// e or E
+		/// </summary>
+#if NETSTANDARD
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+		public static bool IsENotation(byte c)
+		{
+			return c == (byte)'E' || c == (byte)'e';
+		}
+
         /// <summary>
         /// 0 ~ 9
         /// </summary>
